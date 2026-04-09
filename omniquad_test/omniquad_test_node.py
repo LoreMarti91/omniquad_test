@@ -23,27 +23,28 @@ class OmniquadTest(Node):
     def __init__(self,
                 node_name = "omniquad_test_node", # nome del nodo
                 period = 0.45e-3, ## temporizzazione
-                pre_time = 5, # [s]
-               
-                jnt_names = ['LF_WHEEL_JNT','RF_WHEEL_JNT','RH_WHEEL_JNT','LH_WHEEL_JNT'], # QUELLI DELLA CONFIG 
+                             
+                # jnt_names = ['LF_WHEEL_JNT','RF_WHEEL_JNT','RH_WHEEL_JNT','LH_WHEEL_JNT'], # QUELLI DELLA CONFIG 
                 test_name = 'prova_jump', 
-                n_joint = 4, # numero di giunti
-                try_test = 500,   # [salti da eseguire]
+                # n_joint = 4, # numero di giunti
+                try_test = 3,   # [salti da eseguire]
                 try_start = 1,
                
                 height_rate = 0.0,
+                height_rate_vel = 0.5,
+                
                 Vel_start = 0.0,
                 Vel_linear = 0.5,
-                Vel_angolar = 2,
+                Vel_angolar = 1,
                    
-                t_pre_test = 2,   #[s] tempo prima di inizio test
+                t_pre_test = 10,   #[s] tempo prima di inizio test
                 t_acc = 1,   # [s] Durata fase di accelerazione
                 t_holding_vel = 2,   # [s] mantenimento velocità
                 t_dec = 1,   # [s] Durata fase di decelerazione
                 ):
                 
                 
-        pakage_path = '/home/lorenzo/Desktop/LORENZO_WS/softlegjump_ws/src/fatigue_test/' 
+        # pakage_path = '/home/lorenzo/Desktop/LORENZO_WS/softlegjump_ws/src/fatigue_test/' 
         super().__init__(node_name) #super chiama il costruttore della calsse Node e dà il nome ( node_name = omniquad_test_node)
         
         ### TEMPI FASE HOMING_CALLBACK ( AL TERMINE AZZEO COUNTER E QUINDI ANCHE DELTA TEMPO)
@@ -86,19 +87,30 @@ class OmniquadTest(Node):
 
         self.period = period
         self.counter_try_test = try_start 
-        self.jnt_names = jnt_names
-        self.n_joint = n_joint
+        # self.jnt_names = jnt_names
+        # self.n_joint = n_joint
         self.Vel_start = Vel_start
         self.Vel_angolar = Vel_angolar
         self.Vel_linear = Vel_linear
         self.height_rate = height_rate
-        self.counter_move = 0     
+        self.height_rate_vel= height_rate_vel
+        self.counter_move = 0    
+        self.k_0 = 0.2
+        self.k_1 = 1.0 
         self.v_x = [self.Vel_start,self.Vel_start]
         self.v_y = [self.Vel_start,self.Vel_start]
         self.omega = [self.Vel_start,self.Vel_start]
+        self.v_height_rate = [self.height_rate_vel,self.height_rate_vel]
+        self.v_kp_scale_leg = [self.k_1,self.k_1]
+        self.v_kd_scale_leg = [self.k_1,self.k_1]
         self.v_x_pub = 0
         self.v_y_pub  = 0
         self.omega_pub  = 0
+        self.height_rate_pub = 0
+        self.kp_scale_leg_pub = 0
+        self.kd_scale_leg_pub = 0
+        self.kp_scale_wheel = 1.0
+        self.kd_scale_wheel = 0.95
         self.state_moviment = 0
         self.phase_test = 0
           
@@ -112,32 +124,12 @@ class OmniquadTest(Node):
         self.traj_linear_ik = Trajectory() # Creiamo un'istanza della classe Trajectory
 
         
-        # ###### Creo un subsscriber: il nodo riceve messaggi del tipo Joinstate, sul topic state_broadcaster/..  non ci sono timer perchè la callback_state   è chiamata appena riceve un messaggio;
-        # self.state_sub = self.create_subscription(JointsStates,
-        #                                         "state_broadcaster/joints_state",
-        #                                         self.callback_state,
-        #                                         10
-        #                                         #callback_group = self.callback_group)
-        #                                             )
-        # self.distr_state_sub = self.create_subscription(Distributor_State,
-        #                                         "/distributors_state",
-        #                                         self.callback_distributor_state,
-        #                                         10
-        #                                         #callback_group = self.callback_group)
-        #                                             )
-                
-        
-
-        
-
-        ####################################################### allocaion and set up writer to save data via ros2bag
+       
         
        
         self.start_node = self.time_to_s(self.clock.now(), 0.0)
        
-        # print("counter_try_test:", self.counter_try_test, type(self.counter_try_test))
-        # print("phase_test:", self.phase_test, type(self.phase_test))
-        #self.timer = self.create_timer(self.period, self.homing_callback,callback_group = self.callback_group) # si crea un timer con una callback da eseguire ogni periodo (self.period)
+        
         self.timer = self.create_timer(self.period, self.homing_callback)
         
         ######################## la callback crea messaggi e li pubblica
@@ -151,7 +143,10 @@ class OmniquadTest(Node):
             
             self.phase_test = 0
             self.updates_velocities()        
-            self.publish_msg(height_rate = self.height_rate,v_x_init = self.v_x[0],v_x_fin = self.v_x[1],
+            self.publish_msg(height_rate_init = self.v_height_rate[0],height_rate_fin = self.v_height_rate[1],
+                             kp_scale_leg_init = self.v_kp_scale_leg[0],kp_scale_leg_fin = self.v_kp_scale_leg[1],
+                             kd_scale_leg_init = self.v_kd_scale_leg[0],kd_scale_leg_fin = self.v_kd_scale_leg[1],
+                             v_x_init = self.v_x[0],v_x_fin = self.v_x[1],
                              v_y_init = self.v_y[0],v_y_fin = self.v_y[1],
                              omega_init = self.omega[0],omega_fin = self.omega[1],
                              time_ini = 0.0,time_fin=self.t_pre_test,phase_test = self.phase_test,phase_moviment = self.state_moviment)
@@ -172,7 +167,10 @@ class OmniquadTest(Node):
         if(self.t < self.t_acc): 
              self.phase_test = 1
              self.updates_velocities()
-             self.publish_msg(height_rate = self.height_rate,v_x_init = self.v_x[0],v_x_fin = self.v_x[1],
+             self.publish_msg(height_rate_init = self.v_height_rate[0],height_rate_fin = self.v_height_rate[1],
+                             kp_scale_leg_init = self.v_kp_scale_leg[0],kp_scale_leg_fin = self.v_kp_scale_leg[1],
+                             kd_scale_leg_init = self.v_kd_scale_leg[0],kd_scale_leg_fin = self.v_kd_scale_leg[1],
+                             v_x_init = self.v_x[0],v_x_fin = self.v_x[1],
                              v_y_init = self.v_y[0],v_y_fin = self.v_y[1],
                              omega_init = self.omega[0],omega_fin = self.omega[1],
                              time_ini = 0.0,time_fin=self.t_acc,phase_test = self.phase_test,phase_moviment=self.state_moviment)
@@ -182,7 +180,10 @@ class OmniquadTest(Node):
         elif (self.t >= self.t_acc) and (self.t < self.t_holding_vel): 
             self.phase_test = 2
             self.updates_velocities()
-            self.publish_msg(height_rate = self.height_rate,v_x_init = self.v_x[0],v_x_fin = self.v_x[1],
+            self.publish_msg(height_rate_init = self.v_height_rate[0],height_rate_fin = self.v_height_rate[1],
+                             kp_scale_leg_init = self.v_kp_scale_leg[0],kp_scale_leg_fin = self.v_kp_scale_leg[1],
+                             kd_scale_leg_init = self.v_kd_scale_leg[0],kd_scale_leg_fin = self.v_kd_scale_leg[1],
+                             v_x_init = self.v_x[0],v_x_fin = self.v_x[1],
                              v_y_init = self.v_y[0],v_y_fin = self.v_y[1],
                              omega_init = self.omega[0],omega_fin = self.omega[1],
                              time_ini = self.t_acc,time_fin=self.t_holding_vel,phase_test = self.phase_test,phase_moviment=self.state_moviment)
@@ -193,7 +194,10 @@ class OmniquadTest(Node):
         elif (self.t >= self.t_holding_vel) and (self.t < self.t_dec):
             self.phase_test = 3
             self.updates_velocities()
-            self.publish_msg(height_rate = self.height_rate,v_x_init = self.v_x[0],v_x_fin = self.v_x[1],
+            self.publish_msg(height_rate_init = self.v_height_rate[0],height_rate_fin = self.v_height_rate[1],
+                             kp_scale_leg_init = self.v_kp_scale_leg[0],kp_scale_leg_fin = self.v_kp_scale_leg[1],
+                             kd_scale_leg_init = self.v_kd_scale_leg[0],kd_scale_leg_fin = self.v_kd_scale_leg[1],
+                             v_x_init = self.v_x[0],v_x_fin = self.v_x[1],
                              v_y_init = self.v_y[0],v_y_fin = self.v_y[1],
                              omega_init = self.omega[0],omega_fin = self.omega[1],
                              time_ini = self.t_holding_vel,time_fin=self.t_dec,phase_test = self.phase_test,phase_moviment=self.state_moviment)
@@ -272,7 +276,8 @@ class OmniquadTest(Node):
         
           
   
-    def publish_msg(self,height_rate,v_x_init,v_x_fin,v_y_init,v_y_fin,omega_init,omega_fin,time_ini,time_fin,phase_test,phase_moviment): 
+    def publish_msg(self,height_rate_init,height_rate_fin,kp_scale_leg_init,kp_scale_leg_fin,kd_scale_leg_init,kd_scale_leg_fin,
+                    v_x_init,v_x_fin,v_y_init,v_y_fin,omega_init,omega_fin,time_ini,time_fin,phase_test,phase_moviment): 
         msg = OmniMulinexCommand()
         msg_count = Counter()
         
@@ -305,15 +310,44 @@ class OmniquadTest(Node):
             time_fin=time_fin,
             time=self.t
         )
+        self.height_rate_pub = self.traj_linear_ik.linear_trajectory(
+            pos_init=height_rate_init,
+            pos_fin=height_rate_fin,
+            time_ini=time_ini,
+            time_fin=time_fin,
+            time=self.t
+        )
 
-        if not (math.isnan(self.v_x_pub) or math.isnan(self.v_y_pub) or math.isnan(self.omega_pub)):
+        self.kp_scale_leg_pub = self.traj_linear_ik.linear_trajectory(
+            pos_init=kp_scale_leg_init,
+            pos_fin=kp_scale_leg_fin,
+            time_ini=time_ini,
+            time_fin=time_fin,
+            time=self.t
+        )
+
+        self.kd_scale_leg_pub = self.traj_linear_ik.linear_trajectory(
+            pos_init=kd_scale_leg_init,
+            pos_fin=kd_scale_leg_fin,
+            time_ini=time_ini,
+            time_fin=time_fin,
+            time=self.t
+        )
+
+
+        if not (math.isnan(self.v_x_pub) and math.isnan(self.v_y_pub) and math.isnan(self.omega_pub) and math.isnan(self.height_rate_pub) and math.isnan(self.kp_scale_leg_pub) and math.isnan(self.kd_scale_leg_pub)):
 
             msg.header.stamp = self.clock.now().to_msg()
 
             msg.v_x = float(self.v_x_pub)
             msg.v_y = float(self.v_y_pub)
             msg.omega = float(self.omega_pub)
-            msg.height_rate = float (self.height_rate)
+            msg.height_rate = float (self.height_rate_pub)
+            msg.kp_scale_leg = float (self.kp_scale_leg_pub)
+            msg.kd_scale_leg = float (self.kd_scale_leg_pub)
+            msg.kp_scale_wheel = float (self.kp_scale_wheel)
+            msg.kd_scale_wheel = float (self.kd_scale_wheel)
+
 
             self.pub_command_vel.publish(msg)
         else:
@@ -377,84 +411,154 @@ class OmniquadTest(Node):
             self.v_x = [self.Vel_start,self.Vel_start]
             self.v_y = [self.Vel_start,self.Vel_start]
             self.omega = [self.Vel_start,self.Vel_start]
+            self.v_height_rate = [self.height_rate,self.height_rate_vel]
+            self.v_kp_scale_leg = [self.k_1,self.k_1]
+            self.v_kd_scale_leg = [self.k_1,self.k_1]
+
+
             
         elif (self.state_moviment == 1) and (self.phase_test == 1):
             self.v_x = [self.Vel_start,self.Vel_linear]
             self.v_y = [self.Vel_start,self.Vel_start]
             self.omega = [self.Vel_start,self.Vel_start]
+            self.v_height_rate = [self.height_rate_vel,self.height_rate_vel]
+            self.v_kp_scale_leg = [self.k_1,self.k_1]
+            self.v_kd_scale_leg = [self.k_1,self.k_1]
+            
         elif (self.state_moviment == 1) and (self.phase_test == 2):
             self.v_x = [self.Vel_linear,self.Vel_linear]
             self.v_y = [self.Vel_start,self.Vel_start]
             self.omega = [self.Vel_start,self.Vel_start]
+            self.v_height_rate = [self.height_rate_vel,self.height_rate_vel]
+            self.v_kp_scale_leg = [self.k_1,self.k_1]
+            self.v_kd_scale_leg = [self.k_1,self.k_1]
+
         elif (self.state_moviment == 1) and (self.phase_test == 3):
             self.v_x = [self.Vel_linear,self.Vel_start]
             self.v_y = [self.Vel_start,self.Vel_start]
             self.omega = [self.Vel_start,self.Vel_start]
+            self.v_height_rate = [self.height_rate_vel,self.height_rate_vel]
+            self.v_kp_scale_leg = [self.k_1,self.k_1]
+            self.v_kd_scale_leg = [self.k_1,self.k_1]
+
 
         elif (self.state_moviment ==2) and (self.phase_test == 1):
             self.v_x = [self.Vel_start,-self.Vel_linear]
             self.v_y = [self.Vel_start,self.Vel_start]
             self.omega = [self.Vel_start,self.Vel_start]
+            self.v_height_rate = [self.height_rate,-self.height_rate_vel]
+            self.v_kp_scale_leg = [self.k_1,self.k_1]
+            self.v_kd_scale_leg = [self.k_1,self.k_1]
+
         elif (self.state_moviment == 2) and (self.phase_test == 2):
             self.v_x = [-self.Vel_linear,-self.Vel_linear]
             self.v_y = [self.Vel_start,self.Vel_start]
             self.omega = [self.Vel_start,self.Vel_start]
+            self.v_height_rate = [-self.height_rate_vel,-self.height_rate_vel]
+            self.v_kp_scale_leg = [self.k_1,self.k_0]
+            self.v_kd_scale_leg = [self.k_1,self.k_0]
+
         elif (self.state_moviment == 2) and (self.phase_test == 3):
             self.v_x = [-self.Vel_linear,self.Vel_start]
             self.v_y = [self.Vel_start,self.Vel_start]
             self.omega = [self.Vel_start,self.Vel_start]
+            self.v_height_rate = [self.height_rate,self.height_rate]
+            self.v_kp_scale_leg = [self.k_0,self.k_0]
+            self.v_kd_scale_leg = [self.k_0,self.k_0]
+
 
         elif (self.state_moviment == 3) and (self.phase_test == 1):
             self.v_x = [self.Vel_start,self.Vel_start]
             self.v_y = [self.Vel_start,self.Vel_linear]
             self.omega = [self.Vel_start,self.Vel_start]
+            self.v_height_rate = [self.height_rate,self.height_rate]
+            self.v_kp_scale_leg = [self.k_0,self.k_0]
+            self.v_kd_scale_leg = [self.k_0,self.k_0]
+
         elif (self.state_moviment == 3) and (self.phase_test == 2):
             self.v_x = [self.Vel_start,self.Vel_start]
             self.v_y = [self.Vel_linear,self.Vel_linear]
             self.omega = [self.Vel_start,self.Vel_start]
+            self.v_height_rate = [self.height_rate,self.height_rate]
+            self.v_kp_scale_leg = [self.k_0,self.k_0]
+            self.v_kd_scale_leg = [self.k_0,self.k_0]
+
         elif (self.state_moviment == 3) and (self.phase_test == 3):
             self.v_x = [self.Vel_start,self.Vel_start]
             self.v_y = [self.Vel_linear,self.Vel_start]
             self.omega = [self.Vel_start,self.Vel_start]
+            self.v_height_rate = [self.height_rate,self.height_rate]
+            self.v_kp_scale_leg = [self.k_0,self.k_0]
+            self.v_kd_scale_leg = [self.k_0,self.k_0]
+
 
         elif (self.state_moviment == 4) and (self.phase_test == 1):
             self.v_x = [self.Vel_start,self.Vel_start]
             self.v_y = [self.Vel_start,-self.Vel_linear]
             self.omega = [self.Vel_start,self.Vel_start]
+            self.v_height_rate = [self.height_rate,self.height_rate]
+            self.v_kp_scale_leg = [self.k_0,self.k_0]
+            self.v_kd_scale_leg = [self.k_0,self.k_0]
         elif (self.state_moviment == 4) and (self.phase_test == 2):
             self.v_x = [self.Vel_start,self.Vel_start]
             self.v_y = [-self.Vel_linear,-self.Vel_linear]
             self.omega = [self.Vel_start,self.Vel_start]
+            self.v_height_rate = [self.height_rate,self.height_rate]
+            self.v_kp_scale_leg = [self.k_0,self.k_0]
+            self.v_kd_scale_leg = [self.k_0,self.k_0]
         elif (self.state_moviment == 4) and (self.phase_test ==3):
             self.v_x = [self.Vel_start,self.Vel_start]
             self.v_y = [-self.Vel_linear,self.Vel_start]
             self.omega = [self.Vel_start,self.Vel_start]
+            self.v_height_rate = [self.height_rate,self.height_rate]
+            self.v_kp_scale_leg = [self.k_0,self.k_0]
+            self.v_kd_scale_leg = [self.k_0,self.k_0]
+
 
         elif (self.state_moviment == 5) and (self.phase_test == 1):
             self.v_x = [self.Vel_start,self.Vel_start]
             self.v_y = [self.Vel_start,self.Vel_start]
             self.omega = [self.Vel_start,self.Vel_angolar]
+            self.v_height_rate = [self.height_rate,self.v_height_rate]
+            self.v_kp_scale_leg = [self.k_0,self.k_1]
+            self.v_kd_scale_leg = [self.k_0,self.k_1]
         elif (self.state_moviment == 5) and (self.phase_test == 2):
             self.v_x = [self.Vel_start,self.Vel_start]
             self.v_y = [self.Vel_start,self.Vel_start]
             self.omega = [self.Vel_angolar,self.Vel_angolar]
+            self.v_height_rate = [self.v_height_rate,self.v_height_rate]
+            self.v_kp_scale_leg = [self.k_1,self.k_1]
+            self.v_kd_scale_leg = [self.k_1,self.k_1]
         elif (self.state_moviment == 5) and (self.phase_test == 3):
             self.v_x = [self.Vel_start,self.Vel_start]
             self.v_y = [self.Vel_start,self.Vel_start]
             self.omega = [self.Vel_angolar,self.Vel_start]
+            self.v_height_rate = [self.v_height_rate,self.v_height_rate]
+            self.v_kp_scale_leg = [self.k_1,self.k_1]
+            self.v_kd_scale_leg = [self.k_1,self.k_1]
+
 
         elif (self.state_moviment == 6) and (self.phase_test == 1):
             self.v_x = [self.Vel_start,self.Vel_start]
             self.v_y = [self.Vel_start,self.Vel_start]
             self.omega = [self.Vel_start,-self.Vel_angolar]
+            self.v_height_rate = [self.v_height_rate,self.v_height_rate]
+            self.v_kp_scale_leg = [self.k_1,self.k_1]
+            self.v_kd_scale_leg = [self.k_1,self.k_1]
         elif (self.state_moviment == 6) and (self.phase_test == 2):
             self.v_x = [self.Vel_start,self.Vel_start]
             self.v_y = [self.Vel_start,self.Vel_start]
             self.omega = [-self.Vel_angolar,-self.Vel_angolar]
+            self.v_height_rate = [self.height_rate,self.height_rate]
+            self.v_kp_scale_leg = [self.k_1,self.k_1]
+            self.v_kd_scale_leg = [self.k_1,self.k_1]
         elif (self.state_moviment == 6) and (self.phase_test == 3):
             self.v_x = [self.Vel_start,self.Vel_start]
             self.v_y = [self.Vel_start,self.Vel_start]
             self.omega = [-self.Vel_angolar,self.Vel_start]
+            self.v_height_rate = [self.height_rate,self.height_rate]
+            self.v_kp_scale_leg = [self.k_1,self.k_1]
+            self.v_kd_scale_leg = [self.k_1,self.k_1]
         
         else :
             pass
@@ -520,7 +624,7 @@ class OmniquadTest(Node):
 ########### DEFINIZIONE DELLA FUNZIONE main
 def main(args=None):
     rclpy.init(args=args)  # Si inizializza la libreria rlcpy
-    name_exp = "softleg_jump_" + datetime.now().strftime("%m_%d_%Y_%H_%M_%S")
+    name_exp = "omniquad_test_" + datetime.now().strftime("%m_%d_%Y_%H_%M_%S")
     node = OmniquadTest( test_name=name_exp,period=1/450)    # VIENE CREATO IL NODO
     ex = MultiThreadedExecutor()
     ex.add_node(node)
