@@ -423,8 +423,7 @@ class OmniquadTest(Node):
             self.omega = [self.Vel_start,self.Vel_start]
             self.v_height_rate = [self.height_rate_vel,self.height_rate_vel]
             self.v_kp_scale_leg = [self.k_1,self.k_1]
-            self.v_kd_scale_leg = [self.k_1,self.k_1]
-            
+            self.v_kd_scale_leg = [self.k_1,self.k_1]            
         elif (self.state_moviment == 1) and (self.phase_test == 2):
             self.v_x = [self.Vel_linear,self.Vel_linear]
             self.v_y = [self.Vel_start,self.Vel_start]
@@ -432,7 +431,6 @@ class OmniquadTest(Node):
             self.v_height_rate = [self.height_rate_vel,self.height_rate_vel]
             self.v_kp_scale_leg = [self.k_1,self.k_1]
             self.v_kd_scale_leg = [self.k_1,self.k_1]
-
         elif (self.state_moviment == 1) and (self.phase_test == 3):
             self.v_x = [self.Vel_linear,self.Vel_start]
             self.v_y = [self.Vel_start,self.Vel_start]
@@ -449,15 +447,13 @@ class OmniquadTest(Node):
             self.v_height_rate = [self.height_rate,-self.height_rate_vel]
             self.v_kp_scale_leg = [self.k_1,self.k_1]
             self.v_kd_scale_leg = [self.k_1,self.k_1]
-
         elif (self.state_moviment == 2) and (self.phase_test == 2):
             self.v_x = [-self.Vel_linear,-self.Vel_linear]
             self.v_y = [self.Vel_start,self.Vel_start]
             self.omega = [self.Vel_start,self.Vel_start]
             self.v_height_rate = [-self.height_rate_vel,-self.height_rate_vel]
-            self.v_kp_scale_leg = [self.k_1,self.k_0]
-            self.v_kd_scale_leg = [self.k_1,self.k_0]
-
+            self.v_kp_scale_leg = [self.k_1,self.k_1]
+            self.v_kd_scale_leg = [self.k_1,self.k_1]
         elif (self.state_moviment == 2) and (self.phase_test == 3):
             self.v_x = [-self.Vel_linear,self.Vel_start]
             self.v_y = [self.Vel_start,self.Vel_start]
@@ -474,7 +470,6 @@ class OmniquadTest(Node):
             self.v_height_rate = [self.height_rate,self.height_rate]
             self.v_kp_scale_leg = [self.k_0,self.k_0]
             self.v_kd_scale_leg = [self.k_0,self.k_0]
-
         elif (self.state_moviment == 3) and (self.phase_test == 2):
             self.v_x = [self.Vel_start,self.Vel_start]
             self.v_y = [self.Vel_linear,self.Vel_linear]
@@ -482,7 +477,6 @@ class OmniquadTest(Node):
             self.v_height_rate = [self.height_rate,self.height_rate]
             self.v_kp_scale_leg = [self.k_0,self.k_0]
             self.v_kd_scale_leg = [self.k_0,self.k_0]
-
         elif (self.state_moviment == 3) and (self.phase_test == 3):
             self.v_x = [self.Vel_start,self.Vel_start]
             self.v_y = [self.Vel_linear,self.Vel_start]
@@ -519,21 +513,21 @@ class OmniquadTest(Node):
             self.v_x = [self.Vel_start,self.Vel_start]
             self.v_y = [self.Vel_start,self.Vel_start]
             self.omega = [self.Vel_start,self.Vel_angolar]
-            self.v_height_rate = [self.height_rate,self.v_height_rate]
+            self.v_height_rate = [self.height_rate,self.height_rate_vel]
             self.v_kp_scale_leg = [self.k_0,self.k_1]
             self.v_kd_scale_leg = [self.k_0,self.k_1]
         elif (self.state_moviment == 5) and (self.phase_test == 2):
             self.v_x = [self.Vel_start,self.Vel_start]
             self.v_y = [self.Vel_start,self.Vel_start]
             self.omega = [self.Vel_angolar,self.Vel_angolar]
-            self.v_height_rate = [self.v_height_rate,self.v_height_rate]
+            self.v_height_rate = [self.height_rate_vel,self.height_rate_vel]
             self.v_kp_scale_leg = [self.k_1,self.k_1]
             self.v_kd_scale_leg = [self.k_1,self.k_1]
         elif (self.state_moviment == 5) and (self.phase_test == 3):
             self.v_x = [self.Vel_start,self.Vel_start]
             self.v_y = [self.Vel_start,self.Vel_start]
             self.omega = [self.Vel_angolar,self.Vel_start]
-            self.v_height_rate = [self.v_height_rate,self.v_height_rate]
+            self.v_height_rate = [self.height_rate_vel, self.height_rate_vel]
             self.v_kp_scale_leg = [self.k_1,self.k_1]
             self.v_kd_scale_leg = [self.k_1,self.k_1]
 
@@ -542,7 +536,7 @@ class OmniquadTest(Node):
             self.v_x = [self.Vel_start,self.Vel_start]
             self.v_y = [self.Vel_start,self.Vel_start]
             self.omega = [self.Vel_start,-self.Vel_angolar]
-            self.v_height_rate = [self.v_height_rate,self.v_height_rate]
+            self.v_height_rate = [self.v_height_rate,self.height_rate_vel]
             self.v_kp_scale_leg = [self.k_1,self.k_1]
             self.v_kd_scale_leg = [self.k_1,self.k_1]
         elif (self.state_moviment == 6) and (self.phase_test == 2):
